@@ -6,9 +6,10 @@ export function promptMMLength(message) {
     return [null, null];
 
   const pxHeight = editor.currentStageLayer.height();
-  const pxInMM = pxHeight / 1000;
+  // const pxInMM = pxHeight / 1000;
 
-  return [mmAnswer * pxInMM, mmAnswer];
+  // return [mmAnswer * pxInMM, mmAnswer];
+  return [mmAnswer, mmAnswer];
 }
 
 export function promptDegAngle(message) {
