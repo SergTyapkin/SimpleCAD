@@ -10,6 +10,12 @@ import setArcEvents from '../arcEventHandlers';
 
 // Точка
 function containerPoint(editorStore, pointerX, pointerY) {
+  // //получить текущее положение холста на странице
+  // var pos = editorStore.konvaStage.getPointerPosition();
+  // //переводим экранные координаты в координаты stage
+  // pointerX = pos.x;
+  // pointerY = pos.y;
+
   console.log("point");
   const modelPoint = new Point(pointerX, pointerY);
   editorStore.currentDataLayer.addPoint(modelPoint);
@@ -200,8 +206,44 @@ function containerArc(editorStore, pointerX, pointerY) {
   }
 }
 
+function startFieldMove(editorStore, pointerX, pointerY) {
+  editorStore.movingField = true;
+  editorStore.movingFieldStartX = pointerX;
+  editorStore.movingFieldStartY = pointerY;
+}
+
+function continueFieldMove(editorStore, pointerX, pointerY) {
+  if (editorStore.movingField) {
+    let dx = pointerX - editorStore.movingFieldStartX;
+    let dy = pointerY - editorStore.movingFieldStartY;
+
+    let oldScale = editorStore.konvaStage.scaleX();
+    let pointer = editorStore.konvaStage.getPointerPosition();
+
+    let real_dx = dx / oldScale;
+    let real_dy = dy / oldScale;
+
+    let newPos = {
+      x: pointer.x + real_dx,
+      y: pointer.y + real_dy,
+    };
+
+    editorStore.konvaStage.position(newPos);
+    editorStore.gridObject.draw();
+  }
+}
+
+function endFieldMove(editorStore, pointerX, pointerY) {
+  editorStore.movingField = false;
+  editorStore.movingFieldStartX = -1;
+  editorStore.movingFieldStartY = -1;
+}
+
 export default {
   containerPoint,
   containerLine,
   containerArc,
+  startFieldMove,
+  continueFieldMove,
+  endFieldMove
 };

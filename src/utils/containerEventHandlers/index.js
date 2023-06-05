@@ -1,8 +1,7 @@
 import handlers from "./handlers";
 import { drawingColors } from "../constants";
 
-export default function setContainerEvents (editorStore, container) {
-
+export default function setContainerEvents(editorStore, container) {
   container.addEventListener("mousemove", (event) => {
     const pointerX = event.clientX;
     const pointerY = event.clientY;
@@ -59,23 +58,23 @@ export default function setContainerEvents (editorStore, container) {
   });
 
   // key event for LENGTH_TOTAL constraint
-  container.addEventListener('keydown', (event) => {
+  container.addEventListener("keydown", (event) => {
     if (event.keyCode === 13) {
-      console.log('enter pressed');
-      const answer = prompt('Введите длину:');
+      console.log("enter pressed");
+      const answer = prompt("Введите длину:");
       const length = parseFloat(answer);
       if (isNaN(length) || length <= 0) {
-        alert('Введено неверное значение длины:' + answer);
+        alert("Введено неверное значение длины:" + answer);
         return;
       }
-      editorStore.tmpConstraint.value = length
+      editorStore.tmpConstraint.value = length;
       editorStore.currentDataLayer.addConstraint(editorStore.tmpConstraint);
       for (const line of editorStore.selectedElementList.lines) {
-        line.stroke(drawingColors.DEFAULT_ELEMENT_COLOR)
+        line.stroke(drawingColors.DEFAULT_ELEMENT_COLOR);
       }
       editorStore.selectedElementList.lines = [];
       for (const arc of editorStore.selectedElementList.arcs) {
-        arc.fill(drawingColors.DEFAULT_ELEMENT_COLOR)
+        arc.fill(drawingColors.DEFAULT_ELEMENT_COLOR);
       }
       editorStore.selectedElementList.arcs = [];
       editorStore.updateDrawing();
@@ -100,6 +99,69 @@ export default function setContainerEvents (editorStore, container) {
       case 14:
         handlers.containerArc(editorStore, pointerX, pointerY);
         break;
+    }
+  });
+
+  container.addEventListener("mousedown", (event) => {
+    const pointerX = event.clientX;
+    const pointerY = event.clientY;
+
+    switch (editorStore.selectedInstrument) {
+      case 1:
+        handlers.startFieldMove(editorStore, pointerX, pointerY);
+        break;
+    }
+  });
+
+  container.addEventListener("mousemove", (event) => {
+    const pointerX = event.clientX;
+    const pointerY = event.clientY;
+
+    switch (editorStore.selectedInstrument) {
+      case 1:
+        //handlers.continueFieldMove(editorStore, pointerX, pointerY);
+        break;
+    }
+  });
+
+  container.addEventListener("mouseup", (event) => {
+    const pointerX = event.clientX;
+    const pointerY = event.clientY;
+
+    handlers.endFieldMove(editorStore, pointerX, pointerY);
+  });
+
+  container.addEventListener("wheel", (event) => {
+    var scaleBy = 1.1;
+
+    let oldScale = editorStore.konvaStage.scaleX();
+    let pointer = editorStore.konvaStage.getPointerPosition();
+
+    let mousePointTo = {
+      x: (pointer.x - editorStore.konvaStage.x()) / oldScale,
+      y: (pointer.y - editorStore.konvaStage.y()) / oldScale,
+    };
+
+    // how to scale? Zoom in? Or zoom out?
+    let direction = event.deltaY > 0 ? 1 : -1;
+
+    // when we zoom on trackpad, e.evt.ctrlKey is true
+    // in that case lets revert direction
+    if (event.ctrlKey) {
+      direction = -direction;
+    }
+
+    let newScale = direction > 0 ? oldScale / scaleBy : oldScale * scaleBy;
+
+    if (newScale > 0.1 && newScale < 30) {
+      editorStore.konvaStage.scale({ x: newScale, y: newScale });
+
+      let newPos = {
+        x: pointer.x - mousePointTo.x * newScale,
+        y: pointer.y - mousePointTo.y * newScale,
+      };
+      editorStore.konvaStage.position(newPos);
+      editorStore.gridObject.draw();
     }
   });
 }

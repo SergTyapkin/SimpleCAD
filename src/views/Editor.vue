@@ -30,6 +30,7 @@ onMounted(() => {
   // setContainerEvents(editorStore, container);
 
   editor.initStage('container', containerRef.value.offsetWidth, containerRef.value.offsetHeight);
+  editor.initGrid();
   editor.addLayer();
   const w = editor.currentStageLayer.width();
   const h = editor.currentStageLayer.height();
