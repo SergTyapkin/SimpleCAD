@@ -85,22 +85,22 @@ export default function setPointEvents(editorStore, point, events = null) {
         const centerPoint = arc.centerPoint;
         const startPoint = arc.startPoint;
         const endPoint = arc.endPoint;
-  
+
         if (point.relatedId == centerPoint.relatedId) { // move arc center
           const deltaX = point.x() - relatedPoint.x;
           const deltaY = point.y() - relatedPoint.y;
-  
+
           relatedPoint.x = point.x();
           relatedPoint.y = point.y();
-  
+
           arc.x(point.x());
           arc.y(point.y());
-  
+
           startPoint.x(startPoint.x() + deltaX);
           startPoint.y(startPoint.y() + deltaY);
           startPoint.relatedPoint.x = startPoint.x();
           startPoint.relatedPoint.y = startPoint.y();
-          
+
           endPoint.x(endPoint.x() + deltaX);
           endPoint.y(endPoint.y() + deltaY);
           endPoint.relatedPoint.x = endPoint.x();
@@ -109,7 +109,7 @@ export default function setPointEvents(editorStore, point, events = null) {
           const arcRadius = arc.innerRadius();
           const deltaX = point.x() - centerPoint.x();
           const deltaY = point.y() - centerPoint.y();
-  
+
           let startAngleRad = Math.atan(deltaY / deltaX);
           let startAngleDeg = startAngleRad * (180 / Math.PI);
           if ((deltaX < 0 && deltaY >= 0) || (deltaX < 0 && deltaY < 0)) {
@@ -124,15 +124,15 @@ export default function setPointEvents(editorStore, point, events = null) {
           point.y(newStartYPos);
           relatedPoint.x = point.x();
           relatedPoint.y = point.y();
-  
+
           const newArcAngle = arc.angle() - rotationDelta;
           arc.angle(newArcAngle);
-  
+
         } else if (point.relatedId == endPoint.relatedId) { // move arc end point
           const arcRadius = arc.innerRadius();
           const deltaX = point.x() - centerPoint.x();
           const deltaY = point.y() - centerPoint.y();
-  
+
           let endAngleRad = Math.atan(deltaY / deltaX);
           let endAngleDeg = endAngleRad * (180 / Math.PI);
           if ((deltaX < 0 && deltaY >= 0) || (deltaX < 0 && deltaY < 0)) {
@@ -145,25 +145,28 @@ export default function setPointEvents(editorStore, point, events = null) {
           point.y(newEndYPos);
           relatedPoint.x = point.x();
           relatedPoint.y = point.y();
-  
+
           const newArcAngle = endAngleDeg - arc.rotation();
           arc.angle(newArcAngle);
         }
         arcModel.center = centerPoint.relatedPoint;
         arcModel.fi1 = arc.rotation();
         arcModel.fi2 = arc.rotation() + arc.angle();
-  
+
         editorStore.currentStageLayer.draw();
       } else {
         const relatedPoint = point.relatedPoint;
         relatedPoint.x = point.x();
         relatedPoint.y = point.y();
+
+        editorStore.currentStageLayer.draw();
+        console.log(relatedPoint)
       }
       if (Date.now() - editorStore.prevLineDrag > editorStore.frameTime) {
         try {
           console.log(editorStore.currentDataLayer);
           let { status } = editorStore.currentDataLayer.resolve();
-          if (status == "OK") {
+          if (status === "OK" || status === null) {
             console.log('updating drawing');
             editorStore.updateDrawing()
           }

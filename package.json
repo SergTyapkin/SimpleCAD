@@ -12,11 +12,11 @@
     "lodash": "^4.17.21",
     "pinia": "^2.0.12",
     "vue": "^3.2.25",
-    "vue-router": "^4.0.14"
-  },
-  "devDependencies": {
+    "vue-router": "^4.0.14",
     "@vitejs/plugin-vue": "^2.2.0",
     "sass": "^1.49.9",
     "vite": "^2.9.16"
+  },
+  "devDependencies": {
   }
 }
