@@ -28,6 +28,7 @@ onMounted(() => {
   // setContainerEvents(editorStore, container);
 
   editor.initStage('container', containerRef.value.offsetWidth, containerRef.value.offsetHeight);
+  editor.initGrid();
   editor.addLayer();
   const container = editor.stageContainer;
   container.tabIndex = 1;

@@ -10,6 +10,8 @@ import Konva from 'konva';
 import setPointEvents from './pointEventHandlers';
 import setLineEvents from './lineEventHandlers';
 import setArcEvents from './arcEventHandlers';
+import GridObject from '../app';
+
 
 class Editor {
   constructor() {
@@ -33,6 +35,10 @@ class Editor {
     this._selectedObjectForConstraints = ref(null);
     this._selectedObjectInfo = ref(null);
     this.constraintsMap = new Map();
+    this.gridObject = null;
+    this.movingField = false;
+    this.movingFieldStartX = -1;
+    this.movingFieldStartY = -1;
 
     watch(this._selectedInstrument, (_, oldValue) => {
       if (oldValue === 28) {
@@ -97,13 +103,23 @@ class Editor {
     this.konvaStage = konvaStage(containerId, width, height);
     this.kernel = new Kernel();
   }
+
+  initGrid() {
+    let gridLayer = new Konva.Layer();
+    let gridTopLayer = new Konva.Layer();
+    this.konvaStage.add(gridLayer);
+    this.konvaStage.add(gridTopLayer);
+    this.gridObject = new GridObject(this.konvaStage, gridLayer, gridTopLayer);
+    this.gridObject.init();
+  }
+
   addLayer(clone = false, full = false) {
     let newDataLayer, newStageLayer, newDrawingPoints;
     if (clone) {
       const {
         dataLayer,
         stageLayer,
-        drawingPoints
+        drawingPoints,
       } = cloneLayer(this.kernel, this, this.currentDrawingPoints, full);
       newDataLayer = dataLayer;
       newStageLayer = stageLayer;
@@ -121,12 +137,14 @@ class Editor {
 
     this.dataLayers.push(newDataLayer);
     const layer = newStageLayer;
+    
     this.konvaStage.add(layer);
     this.stageLayers.push(layer);
     this.stageLayersList.value.push({ id: layer._id, index: layer.index });
     this.drawingPoints.push(newDrawingPoints);
     this.selectedElementList = { lines: [], arcs: [] };
     console.log('editor', this)
+
     return layer;
   }
   switchLayer(index) {
