@@ -85,7 +85,7 @@ export default function setLineEvents(editorStore, line, events = null) {
       if (Date.now() - editorStore.prevLineDrag > editorStore.frameTime) {
         try {
           let { status } = editorStore.currentDataLayer.resolve();
-          if (status == "OK") {
+          if (status === "OK" || status === null) {
             editorStore.updateDrawing();
           }
         } catch (e) {

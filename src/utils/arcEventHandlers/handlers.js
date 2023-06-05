@@ -5,65 +5,76 @@ import { drawingColors } from "../constants";
 import { processArc } from "../konvaHelpers/clone";
 import setLineEvents from "../lineEventHandlers";
 import setPointEvents from "../pointEventHandlers";
+import {constraintImage, text} from "../konvaHelpers/draw";
+import {promptDegAngle, promptMMLength} from "../konvaHelpers/utils";
 
 // Длина дуги
-function arcLength(editorStore, arc) {
+async function arcLength(editorStore, arc) {
   if (!arc.relatedConstraints[ConstraintsTypes.ARC_LENGTH]?.length) {
     console.log("arc length");
-    const answer = prompt("Введите длину дуги:");
-    const lenght = parseFloat(answer);
-    if (isNaN(lenght) || lenght <= 0) {
-      alert("Введено неверное значение длины:" + answer);
+    const [pxLength, mmLength] = promptMMLength("Введите длину дуги:");
+    if (pxLength === null || pxLength <= 0) {
+      alert("Введено неверное значение длины:" + mmLength);
       return;
     }
     const constraint = new Constraint({
       type: ConstraintsTypes.ARC_LENGTH,
       elements: [arc.relatedArc],
-      value: lenght,
+      image: await constraintImage(arc.relatedArc._p2.x - 15, arc.relatedArc._p2.y - 15, ConstraintsTypes["ARC_LENGTH"]),
+      value: pxLength,
     });
+    constraint._text = text(arc.relatedArc._p2.x, arc.relatedArc._p2.y, String(mmLength) + "*");
+    editorStore.currentStageLayer.add(constraint._text);
     arc.relatedConstraints[constraint.type] = [constraint];
+    editorStore.currentStageLayer.add(constraint._image);
     editorStore.currentDataLayer.addConstraint(constraint);
     editorStore.updateDrawing();
   }
 }
 
 // Радиус дуги
-function arcRadius(editorStore, arc) {
+async function arcRadius(editorStore, arc) {
   if (!arc.relatedConstraints[ConstraintsTypes.ARC_RADIUS]?.length) {
     console.log("arc radius");
-    const answer = prompt("Введите радиус дуги:");
-    const radius = parseFloat(answer);
-    if (isNaN(radius) || radius <= 0) {
-      alert("Введено неверное значение радиуса: " + answer);
+    const [pxLength, mmLength] = promptMMLength("Введите радиус дуги:");
+    if (pxLength === null || pxLength <= 0) {
+      alert("Введено неверное значение радиуса: " + mmLength);
       return;
     }
     const constraint = new Constraint({
       type: ConstraintsTypes.ARC_RADIUS,
       elements: [arc.relatedArc],
-      value: radius,
+      image: await constraintImage(arc.relatedArc._p2.x - 15, arc.relatedArc._p2.y - 15, ConstraintsTypes["ARC_RADIUS"]),
+      value: pxLength,
     });
+    constraint._text = text(arc.relatedArc._p2.x, arc.relatedArc._p2.y, String(mmLength));
+    editorStore.currentStageLayer.add(constraint._text);
     arc.relatedConstraints[constraint.type] = [constraint];
+    editorStore.currentStageLayer.add(constraint._image);
     editorStore.currentDataLayer.addConstraint(constraint);
     editorStore.updateDrawing();
   }
 }
 
 // Угол дуги
-function arcAngle(editorStore, arc) {
+async function arcAngle(editorStore, arc) {
   if (!arc.relatedConstraints[ConstraintsTypes.ARC_ANGLE]?.length) {
     console.log("arc angle");
-    const answer = prompt("Введите угол дуги:");
-    const angle = parseFloat(answer);
-    if (isNaN(angle) || angle <= 0 || angle > 360) {
-      alert("Введено неверное значение угла: " + answer);
+    const angle = promptDegAngle("Введите угол дуги:")[0];
+    if (angle === null || angle <= 0 || angle >= 360) {
+      alert("Введено неверное значение угла: " + angle);
       return;
     }
     const constraint = new Constraint({
       type: ConstraintsTypes.ARC_ANGLE,
       elements: [arc.relatedArc],
+      image: await constraintImage(arc.relatedArc._p2.x - 15, arc.relatedArc._p2.y - 15, ConstraintsTypes["ARC_ANGLE"]),
       value: angle,
     });
+    constraint._text = text(arc.relatedArc._p2.x, arc.relatedArc._p2.y, String(angle) + "°");
+    editorStore.currentStageLayer.add(constraint._text);
     arc.relatedConstraints[constraint.type] = [constraint];
+    editorStore.currentStageLayer.add(constraint._image);
     editorStore.currentDataLayer.addConstraint(constraint);
     editorStore.updateDrawing();
   }
@@ -71,14 +82,17 @@ function arcAngle(editorStore, arc) {
 
 // Внешнее касание дуг
 // Внутреннее касание дуг
-function arcTouch(editorStore, arc) {
-  if (!editorStore.tmpConstraint) {
+async function arcTouch(editorStore, arc) {
+  if (editorStore?.tmpConstraint?.type !== ConstraintsTypes["ARC_TANGENT_ToArc"]) {
     const constraint = new Constraint({
       type: "ARC_TANGENT_ToArc",
       elements: [arc.relatedArc],
       mode: editorStore.selectedInstrument === 18 ? "OUT" : "IN",
+      image: await constraintImage(arc.relatedArc._p2.x - 15, arc.relatedArc._p2.y - 15, ConstraintsTypes["ARC_TANGENT_ToArc"]),
     });
+    editorStore.tmpConstraint?._image?.destroy();
     editorStore.tmpConstraint = constraint;
+    editorStore.currentStageLayer.add(constraint._image);
     if (arc.relatedConstraints[constraint.type]) {
       arc.relatedConstraints[constraint.type].push(constraint);
     } else {
@@ -102,13 +116,16 @@ function arcTouch(editorStore, arc) {
 }
 
 // Касание дуги и отрезка
-function arcAndLine(editorStore, arc) {
-  if (!editorStore.tmpConstraint) {
+async function arcAndLine(editorStore, arc) {
+  if (editorStore?.tmpConstraint?.type !== ConstraintsTypes["ARC_TANGENT_ToLine"]) {
     const constraint = new Constraint({
       type: "ARC_TANGENT_ToLine",
       elements: [arc.relatedArc],
+      image: await constraintImage(arc.relatedArc._p2.x - 15, arc.relatedArc._p2.y - 15, ConstraintsTypes["ARC_TANGENT_ToLine"]),
     });
+    editorStore.tmpConstraint?._image?.destroy();
     editorStore.tmpConstraint = constraint;
+    editorStore.currentStageLayer.add(constraint._image);
     if (arc.relatedConstraints[constraint.type]) {
       arc.relatedConstraints[constraint.type].push(constraint);
     } else {
@@ -116,6 +133,7 @@ function arcAndLine(editorStore, arc) {
     }
   } else {
     if (editorStore.tmpConstraint.elements) {
+      editorStore.tmpConstraint?._image?.destroy();
       editorStore.tmpConstraint = null;
       return;
     }
@@ -136,13 +154,16 @@ function arcAndLine(editorStore, arc) {
 }
 
 // Длина полилинии
-function polylineLength(editorStore, arc) {
-  if (!editorStore.tmpConstraint) {
+async function polylineLength(editorStore, arc) {
+  if (editorStore?.tmpConstraint?.type !== ConstraintsTypes["LENGTH_TOTAL"]) {
     const constraint = new Constraint({
       type: ConstraintsTypes.LENGTH_TOTAL,
       elements: [arc.relatedArc],
+      image: await constraintImage(arc.relatedArc._p2.x - 15, arc.relatedArc._p2.y - 15, ConstraintsTypes["LENGTH_TOTAL"]),
     });
+    editorStore.tmpConstraint?._image?.destroy();
     editorStore.tmpConstraint = constraint;
+    editorStore.currentStageLayer.add(constraint._image);
     if (arc.relatedConstraints[constraint.type]) {
       arc.relatedConstraints[constraint.type].push(constraint);
     } else {
@@ -227,6 +248,28 @@ function deleteArc(editorStore, arc) {
   );
   editorStore.currentDrawingPoints.splice(pointIndex, 1);
 
+
+  // for (const key in startP.relatedConstraints) {
+  //   startP.relatedConstraints[key].forEach(c => {
+  //     c?._image?.destroy(); // delete constraints
+  //   });
+  // }
+  // for (const key in endP.relatedConstraints) {
+  //   endP.relatedConstraints[key].forEach(c => {
+  //     c?._image?.destroy(); // delete constraints
+  //   });
+  // }
+  // for (const key in centerP.relatedConstraints) {
+  //   centerP.relatedConstraints[key].forEach(c => {
+  //     c?._image?.destroy(); // delete constraints
+  //   });
+  // }
+  for (const key in arc.relatedConstraints) {
+    arc.relatedConstraints[key].forEach(c => {
+      c?._image?.destroy(); // delete constraints images
+      c?._text?.destroy(); // delete constraints texts
+    });
+  }
   startP.destroy();
   endP.destroy();
   centerP.destroy();
