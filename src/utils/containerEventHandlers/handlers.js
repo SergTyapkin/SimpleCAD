@@ -1,7 +1,7 @@
 import { Constraint } from "../../../Constraint";
 import { ConstraintsTypes } from "../../../ConstraintsTypes";
 import { drawingColors } from "../constants";
-import { point, line, arc as konvaArc } from "../konvaHelpers/draw";
+import {point, line, arc as konvaArc, text} from "../konvaHelpers/draw";
 import { Point } from "../../../elements/Point";
 import { Arc } from "../../../elements/Arc";
 import setPointEvents from '../pointEventHandlers';
@@ -25,6 +25,7 @@ function containerPoint(editorStore, pointerX, pointerY) {
 
 // Отрезок
 function containerLine(editorStore, pointerX, pointerY) {
+  console.log("line");
   if (!editorStore.endOfLine) {
     const startModelPoint = new Point(pointerX, pointerY);
     const endModelPoint = new Point(pointerX, pointerY);
@@ -59,6 +60,7 @@ function containerLine(editorStore, pointerX, pointerY) {
     eP.relatedConstraints = {};
 
     editorStore.endOfLine = true;
+
     editorStore.currentStageLayer.add(drawingLine);
     editorStore.currentStageLayer.add(sP);
     editorStore.currentStageLayer.add(eP);

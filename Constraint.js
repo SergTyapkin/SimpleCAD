@@ -1,7 +1,7 @@
 class Constraint {
   static curId = 0;
 
-  constructor({type, points, lines, value, elements, mode, isInternal = false}) {
+  constructor({type, points, lines, value, elements, mode, image, isInternal = false}) {
     this._type = type;
     this._points = points;
     this._lines = lines;
@@ -9,7 +9,9 @@ class Constraint {
     this._value = value;
     this._mode = mode;
     this._id = Constraint.curId++;
-    this._isInternal = isInternal
+    this._isInternal = isInternal;
+    this._image = image;
+    this._text = undefined;
   }
 
   set value(val) {
@@ -30,8 +32,8 @@ class Constraint {
 
   set points(val) {
     this._points = val;
-  }  
-  
+  }
+
   get lines() {
     return this._lines;
   }

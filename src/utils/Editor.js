@@ -11,6 +11,7 @@ import setPointEvents from './pointEventHandlers';
 import setLineEvents from './lineEventHandlers';
 import setArcEvents from './arcEventHandlers';
 
+
 class Editor {
   constructor() {
     this.konvaStage = null;
@@ -161,7 +162,7 @@ class Editor {
     this.updateProjections();
     try {
       let { status } = this.currentDataLayer.resolve();
-      if (status == "OK") {
+      if (status === "OK" || status === null) {
         this.updateDrawing();
       }
     } catch (e) {
@@ -175,7 +176,7 @@ class Editor {
         projections.forEach((projection) => {
           projection.relatedPoint.x = objectPoint.x;
           projection.relatedPoint.y = objectPoint.y;
-          
+
           this.updatePointPos(projection);
         })
       }
@@ -187,7 +188,7 @@ class Editor {
           projection.startPoint.relatedPoint.y = objectStartPoint.relatedPoint.y;
           projection.endPoint.relatedPoint.x = objectEndPoint.relatedPoint.x;
           projection.endPoint.relatedPoint.y = objectEndPoint.relatedPoint.y;
-          
+
           this.updatePointPos(projection.startPoint);
           this.updatePointPos(projection.endPoint);
         })
@@ -204,7 +205,7 @@ class Editor {
           projection.endPoint.relatedPoint.y = objectEndPoint.relatedPoint.y;
           projection.centerPoint.relatedPoint.x = objectCenterPoint.relatedPoint.x;
           projection.centerPoint.relatedPoint.y = objectCenterPoint.relatedPoint.y;
-          
+
           this.updateArcPos(projection);
         })
       }
@@ -214,6 +215,25 @@ class Editor {
     const relatedPoint = point.relatedPoint;
     point.x(relatedPoint.x);
     point.y(relatedPoint.y);
+    let widthTotal = 0;
+    for (const key in point.relatedConstraints) {
+      point.
+        relatedConstraints[key].forEach(c => {
+        widthTotal += c._image.name() + 10; // name is width
+      });
+    }
+    let lastX = relatedPoint.x - widthTotal / 2;
+    for (const key in point.relatedConstraints) {
+      point.relatedConstraints[key].forEach(c => {
+        c._image.x(lastX);
+        c._image.y(relatedPoint.y + 10);
+        if (c._text !== undefined) {
+          c._text.x(lastX + 5);
+          c._text.y(relatedPoint.y + 35);
+        }
+        lastX += c._image.name() + 10; // name is width
+      });
+    }
     if (point.relatedLine) {
       const line = point.relatedLine;
       const linePoints = line.points();
@@ -282,11 +302,15 @@ class Editor {
     this.currentStageLayer.draw();
   }
   updateDrawing() {
-    console.log('current drawing points', this.currentDrawingPoints);
+    console.log("Stage layer:", editor.currentStageLayer)
     for (let point of this.currentDrawingPoints) {
       this.updatePointPos(point);
       if (point.relatedArc) {
         this.updateArcPos(point.relatedArc);
+        // this.updateArcObject(point.relatedArc);
+      }
+      if (point.relatedLine) {
+        // this.updateLineObject(point.relatedLine);
       }
     }
   }
@@ -308,6 +332,28 @@ class Editor {
     startPRel.y = startP.y();
     endPRel.x = endP.x();
     endPRel.y = endP.y();
+
+    let widthTotal = 0;
+    for (const key in line.relatedConstraints) {
+      line.relatedConstraints[key].forEach(c => {
+        widthTotal += c._image.name() + 10; // name is width
+      });
+    }
+    let cX = (line.startPoint.x() + line.endPoint.x()) / 2;
+    let cY = (line.startPoint.y() + line.endPoint.y()) / 2;
+    let lastX = cX - widthTotal / 2;
+    let lastY = cY - 15;
+    for (const key in line.relatedConstraints) {
+      line.relatedConstraints[key].forEach(c => {
+        c._image.x(lastX);
+        c._image.y(lastY);
+        if (c._text !== undefined) {
+          c._text.x(lastX + 5);
+          c._text.y(lastY + 25);
+        }
+        lastX += c._image.name() + 10; // name is width
+      });
+    }
 
     this.currentStageLayer.draw();
   }
@@ -336,6 +382,30 @@ class Editor {
     endPoint.y(endPoint.y() + deltaY);
     endPoint.relatedPoint.x = endPoint.x();
     endPoint.relatedPoint.y = endPoint.y();
+
+    let widthTotal = 0;
+    for (const key in arc.relatedConstraints) {
+      arc.relatedConstraints[key].forEach(c => {
+        if (c._image !== undefined) {
+          widthTotal += c._image.name() + 10; // name is width
+        }
+      });
+    }
+    let lastX = arc.centerPoint.x() - widthTotal / 2;
+    let lastY = arc.centerPoint.y() - arc._image.height() / 2;
+    for (const key in arc.relatedConstraints) {
+      arc.relatedConstraints[key].forEach(c => {
+        if (c._image !== undefined) {
+          c._image.x(lastX);
+          c._image.y(lastY);
+          if (c._text !== undefined) {
+            c._text.x(lastX + 5);
+            c._text.y(lastY + 25);
+          }
+          lastX += c._image.name() + 10; // name is width
+        }
+      });
+    }
 
     this.currentStageLayer.draw();
   }
@@ -382,7 +452,8 @@ class Editor {
       for (let constraintType in obj.relatedConstraints) {
         const constraintIndex = obj.relatedConstraints[constraintType].findIndex((el) => el.id === constraint.id);
         if (constraintIndex >= 0) {
-          obj.relatedConstraints[constraintType].splice(constraintIndex, 1);
+          const deletedConstraint = obj.relatedConstraints[constraintType].splice(constraintIndex, 1)[0];
+          deletedConstraint._image?.destroy();
         }
       }
     }

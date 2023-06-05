@@ -5,6 +5,7 @@ const drawingColors = {
   'DISABLED_ELEMENT_COLOR': '#cccccc',
   'CONSTRAINT_HIGHLIGHT_ELEMENT_COLOR': '#eabc04',
   'PROJECTION_ELEMENT_COLOR': '#21e8bf',
+  'AXIS_COLOR': '#000000'
 }
 
 const CONSTRAINTS_ICONS = {

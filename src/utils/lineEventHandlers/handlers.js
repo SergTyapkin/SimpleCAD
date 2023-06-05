@@ -2,12 +2,13 @@ import { Constraint } from "../../../Constraint";
 import { ConstraintsTypes } from "../../../ConstraintsTypes";
 import { Line } from "../../../elements/Line";
 import { drawingColors } from "../constants";
-import { line as konvaLine } from "../konvaHelpers/draw";
+import {constraintImage, line as konvaLine, text} from "../konvaHelpers/draw";
 import setLineEvents from "./index";
 import setPointEvents from "../pointEventHandlers";
 import arcHandlers from "../arcEventHandlers/handlers";
 import pointHandlers from "../pointEventHandlers/handlers";
 import { processLine } from "../konvaHelpers/clone";
+import {promptDegAngle, promptMMLength} from "../konvaHelpers/utils";
 
 // Удаление
 function deleteLine(editorStore, line) {
@@ -31,6 +32,22 @@ function deleteLine(editorStore, line) {
   );
   editorStore.currentDrawingPoints.splice(pointIndex, 1);
 
+  // for (const key in startP.relatedConstraints) {
+  //   startP.relatedConstraints[key].forEach(c => {
+  //     c?._image?.destroy(); // delete constraints
+  //   });
+  // }
+  // for (const key in endP.relatedConstraints) {
+  //   endP.relatedConstraints[key].forEach(c => {
+  //     c?._image?.destroy(); // delete constraints
+  //   });
+  // }
+  for (const key in line.relatedConstraints) {
+    line.relatedConstraints[key].forEach(c => {
+      c?._image?.destroy(); // delete constraints images
+      c?._text?.destroy(); // delete constraints texts
+    });
+  }
   startP.destroy();
   endP.destroy();
   line.destroy();
@@ -39,54 +56,84 @@ function deleteLine(editorStore, line) {
 }
 
 // Горизонтальность
-function horizontalLine(editorStore, line) {
+async function horizontalLine(editorStore, line) {
   if (!line.relatedConstraints[ConstraintsTypes.HORIZONTAL]?.length) {
     const points = [line.startPoint.relatedPoint, line.endPoint.relatedPoint];
     console.log("Line Handler Horizontal");
-    const constraint = new Constraint({ type: "HORIZONTAL", points });
+    const cX = (line.startPoint.relatedPoint.x + line.endPoint.relatedPoint.x) / 2 - 15;
+    const cY = (line.startPoint.relatedPoint.y + line.endPoint.relatedPoint.y) / 2 - 15;
+    const constraint = new Constraint({
+      type: "HORIZONTAL",
+      image: await constraintImage(cX, cY, ConstraintsTypes["HORIZONTAL"]),
+      points
+    });
     line.relatedConstraints[constraint.type] = [constraint];
+    editorStore.currentStageLayer.add(constraint._image);
     editorStore.currentDataLayer.addConstraint(constraint);
     editorStore.updateDrawing();
   }
 }
 
 // Расстояние между точками / длина отрезка
-function lineLength(editorStore, line) {
-  const answer = parseFloat(prompt("Введите расстояние:"));
-  if (isNaN(answer)) {
+async function lineLength(editorStore, line) {
+  const [pxLength, mmLength] = promptMMLength("Введите расстояние:");
+  if (pxLength === null || pxLength <= 0) {
     alert("Введено неверное значение расстояния");
     editorStore.tmpConstraint.points[0].relatedConstraints["LENGTH"].pop();
+    editorStore.tmpConstraint?._image?.destroy();
     editorStore.tmpConstraint = null;
     return;
   }
   const points = [line.startPoint.relatedPoint, line.endPoint.relatedPoint];
   console.log("Line Handler Length");
-  const constraint = new Constraint({ type: "LENGTH", points, value: answer });
+  const cX = (line.startPoint.relatedPoint.x + line.endPoint.relatedPoint.x) / 2 - 15;
+  const cY = (line.startPoint.relatedPoint.y + line.endPoint.relatedPoint.y) / 2 - 15;
+  const constraint = new Constraint({
+    type: "LENGTH",
+    points,
+    image: await constraintImage(cX, cY, ConstraintsTypes["LENGTH"]),
+    value: pxLength,
+  });
+  constraint._text = text(cX, cY, String(mmLength));
+  editorStore.currentStageLayer.add(constraint._text);
   line.relatedConstraints[constraint.type] = [constraint];
+  editorStore.currentStageLayer.add(constraint._image);
   editorStore.currentDataLayer.addConstraint(constraint);
   editorStore.updateDrawing();
 }
 
 // Вертикальность
-function verticalLine(editorStore, line) {
+async function verticalLine(editorStore, line) {
   if (!line.relatedConstraints[ConstraintsTypes.VERTICAL]?.length) {
     const points = [line.startPoint.relatedPoint, line.endPoint.relatedPoint];
     console.log("Line Handler Vertical");
-    const constraint = new Constraint({ type: "VERTICAL", points });
+    const cX = (line.startPoint.relatedPoint.x + line.endPoint.relatedPoint.x) / 2 - 15;
+    const cY = (line.startPoint.relatedPoint.y + line.endPoint.relatedPoint.y) / 2 - 15;
+    const constraint = new Constraint({
+      type: "VERTICAL",
+      image: await constraintImage(cX, cY, ConstraintsTypes["VERTICAL"]),
+      points,
+    });
     line.relatedConstraints[constraint.type] = [constraint];
+    editorStore.currentStageLayer.add(constraint._image);
     editorStore.currentDataLayer.addConstraint(constraint);
     editorStore.updateDrawing();
   }
 }
 
 // Параллельность отрезков
-function parallelLine(editorStore, line) {
-  if (!editorStore.tmpConstraint) {
+async function parallelLine(editorStore, line) {
+  if (editorStore?.tmpConstraint?.type !== ConstraintsTypes["PARALLEL"]) {
+    const cX = (line.startPoint.relatedPoint.x + line.endPoint.relatedPoint.x) / 2 - 15;
+    const cY = (line.startPoint.relatedPoint.y + line.endPoint.relatedPoint.y) / 2 - 15;
     const constraint = new Constraint({
       type: "PARALLEL",
       lines: [[line.startPoint.relatedPoint, line.endPoint.relatedPoint]],
+      image: await constraintImage(cX, cY, ConstraintsTypes["PARALLEL"]),
     });
+    editorStore.tmpConstraint?._image?.destroy();
     editorStore.tmpConstraint = constraint;
+    editorStore.currentStageLayer.add(constraint._image);
     if (line.relatedConstraints[constraint.type]) {
       line.relatedConstraints[constraint.type].push(constraint);
     } else {
@@ -113,22 +160,28 @@ function parallelLine(editorStore, line) {
 }
 
 // Угол между отрезками
-function linesAngle(editorStore, line) {
-  if (!editorStore.tmpConstraint) {
+async function linesAngle(editorStore, line) {
+  if (editorStore?.tmpConstraint?.type !== ConstraintsTypes["ANGLE"]) {
+    const cX = (line.startPoint.relatedPoint.x + line.endPoint.relatedPoint.x) / 2 - 15;
+    const cY = (line.startPoint.relatedPoint.y + line.endPoint.relatedPoint.y) / 2 - 15;
     const constraint = new Constraint({
       type: "ANGLE",
       lines: [[line.startPoint.relatedPoint, line.endPoint.relatedPoint]],
+      image: await constraintImage(cX, cY, ConstraintsTypes["ANGLE"]),
     });
+    editorStore.tmpConstraint?._image?.destroy();
     editorStore.tmpConstraint = constraint;
+    editorStore.currentStageLayer.add(constraint._image);
     if (line.relatedConstraints[constraint.type]) {
       line.relatedConstraints[constraint.type].push(constraint);
     } else {
       line.relatedConstraints[constraint.type] = [constraint];
     }
   } else {
-    const answer = parseFloat(prompt("Введите угол:"));
-    if (isNaN(answer)) {
+    const answer = promptDegAngle("Введите угол:")[0];
+    if (answer === null || answer <= 0) {
       alert("Введено неверное значение угла");
+      editorStore.tmpConstraint?._image?.destroy();
       editorStore.tmpConstraint = null;
       return;
     }
@@ -147,19 +200,28 @@ function linesAngle(editorStore, line) {
         editorStore.tmpConstraint,
       ];
     }
+    const cX = (line.startPoint.relatedPoint.x + line.endPoint.relatedPoint.x) / 2;
+    const cY = (line.startPoint.relatedPoint.y + line.endPoint.relatedPoint.y) / 2;
+    editorStore.tmpConstraint._text = text(cX, cY, String(answer) + '°');
+    editorStore.currentStageLayer.add(editorStore.tmpConstraint._text);
     editorStore.updateDrawing();
     editorStore.tmpConstraint = null;
   }
 }
 
 // Перпендикулярность отрезков
-function perpendicularLines(editorStore, line) {
-  if (!editorStore.tmpConstraint) {
+async function perpendicularLines(editorStore, line) {
+  if (editorStore?.tmpConstraint?.type !== ConstraintsTypes["PERPENDICULAR"]) {
+    const cX = (line.startPoint.relatedPoint.x + line.endPoint.relatedPoint.x) / 2 - 15;
+    const cY = (line.startPoint.relatedPoint.y + line.endPoint.relatedPoint.y) / 2 - 15;
     const constraint = new Constraint({
       type: "PERPENDICULAR",
       lines: [[line.startPoint.relatedPoint, line.endPoint.relatedPoint]],
+      image: await constraintImage(cX, cY, ConstraintsTypes["PERPENDICULAR"]),
     });
+    editorStore.tmpConstraint?._image?.destroy();
     editorStore.tmpConstraint = constraint;
+    editorStore.currentStageLayer.add(constraint._image);
     if (line.relatedConstraints[constraint.type]) {
       line.relatedConstraints[constraint.type].push(constraint);
     } else {
@@ -186,13 +248,18 @@ function perpendicularLines(editorStore, line) {
 }
 
 // Точка на прямой
-function pointOnLine(editorStore, line) {
-  if (!editorStore.tmpConstraint) {
+async function pointOnLine(editorStore, line) {
+  if (editorStore?.tmpConstraint?.type !== ConstraintsTypes["POINT_ON_LINE"]) {
+    const cX = (line.startPoint.relatedPoint.x + line.endPoint.relatedPoint.x) / 2 - 15;
+    const cY = (line.startPoint.relatedPoint.y + line.endPoint.relatedPoint.y) / 2 - 15;
     const constraint = new Constraint({
       type: "POINT_ON_LINE",
       lines: [[line.startPoint.relatedPoint, line.endPoint.relatedPoint]],
+      image: await constraintImage(cX, cY, ConstraintsTypes["POINT_ON_LINE"]),
     });
+    editorStore.tmpConstraint?._image?.destroy();
     editorStore.tmpConstraint = constraint;
+    editorStore.currentStageLayer.add(constraint._image);
     if (line.relatedConstraints[constraint.type]) {
       line.relatedConstraints[constraint.type].push(constraint);
     } else {
@@ -218,13 +285,18 @@ function pointOnLine(editorStore, line) {
 }
 
 // Касание дуги и отрезка
-function arcAndLine(editorStore, line) {
-  if (!editorStore.tmpConstraint) {
+async function arcAndLine(editorStore, line) {
+  if (editorStore?.tmpConstraint?.type !== ConstraintsTypes["ARC_TANGENT_ToLine"]) {
+    const cX = (line.startPoint.relatedPoint.x + line.endPoint.relatedPoint.x) / 2 - 15;
+    const cY = (line.startPoint.relatedPoint.y + line.endPoint.relatedPoint.y) / 2 - 15;
     const constraint = new Constraint({
       type: "ARC_TANGENT_ToLine",
       lines: [[line.startPoint.relatedPoint, line.endPoint.relatedPoint]],
+      image: await constraintImage(cX, cY, ConstraintsTypes["ARC_TANGENT_ToLine"]),
     });
+    editorStore.tmpConstraint?._image?.destroy();
     editorStore.tmpConstraint = constraint;
+    editorStore.currentStageLayer.add(constraint._image);
     if (line.relatedConstraints[constraint.type]) {
       line.relatedConstraints[constraint.type].push(constraint);
     } else {
@@ -232,6 +304,7 @@ function arcAndLine(editorStore, line) {
     }
   } else {
     if (editorStore.tmpConstraint.lines) {
+      editorStore.tmpConstraint?._image?.destroy();
       editorStore.tmpConstraint = null;
       return;
     }
@@ -254,13 +327,18 @@ function arcAndLine(editorStore, line) {
 }
 
 // Равная длина отрезков
-function equalLines(editorStore, line) {
-  if (!editorStore.tmpConstraint) {
+async function equalLines(editorStore, line) {
+  if (editorStore?.tmpConstraint?.type !== ConstraintsTypes["EQUAL_LINES"]) {
+    const cX = (line.startPoint.relatedPoint.x + line.endPoint.relatedPoint.x) / 2 - 15;
+    const cY = (line.startPoint.relatedPoint.y + line.endPoint.relatedPoint.y) / 2 - 15;
     const constraint = new Constraint({
       type: "EQUAL_LINES",
       lines: [[line.startPoint.relatedPoint, line.endPoint.relatedPoint]],
+      image: await constraintImage(cX, cY, ConstraintsTypes["EQUAL_LINES"]),
     });
+    editorStore.tmpConstraint?._image?.destroy();
     editorStore.tmpConstraint = constraint;
+    editorStore.currentStageLayer.add(constraint._image);
     if (line.relatedConstraints[constraint.type]) {
       line.relatedConstraints[constraint.type].push(constraint);
     } else {
@@ -287,13 +365,18 @@ function equalLines(editorStore, line) {
 }
 
 // Расстояние между точкой и отрезком
-function poinAndLineDist(editorStore, line) {
-  if (!editorStore.tmpConstraint) {
+async function pointAndLineDist(editorStore, line) {
+  if (editorStore?.tmpConstraint?.type !== ConstraintsTypes["DISTANCE_POINT_LINE"]) {
+    const cX = (line.startPoint.relatedPoint.x + line.endPoint.relatedPoint.x) / 2 - 15;
+    const cY = (line.startPoint.relatedPoint.y + line.endPoint.relatedPoint.y) / 2 - 15;
     const constraint = new Constraint({
       type: "DISTANCE_POINT_LINE",
       lines: [[line.startPoint.relatedPoint, line.endPoint.relatedPoint]],
+      image: await constraintImage(cX, cY, ConstraintsTypes["DISTANCE_POINT_LINE"]),
     });
+    editorStore.tmpConstraint?._image?.destroy();
     editorStore.tmpConstraint = constraint;
+    editorStore.currentStageLayer.add(constraint._image);
     if (line.relatedConstraints[constraint.type]) {
       line.relatedConstraints[constraint.type].push(constraint);
     } else {
@@ -301,23 +384,29 @@ function poinAndLineDist(editorStore, line) {
     }
   } else {
     if (editorStore.tmpConstraint.lines) {
+      editorStore.tmpConstraint?._image?.destroy();
       editorStore.tmpConstraint = null;
       return;
     }
-    const answer = parseFloat(prompt("Введите расстояние:"));
-    if (isNaN(answer)) {
+    const [pxLength, mmLength] = promptMMLength("Введите расстояние:");
+    if (pxLength === null || pxLength <= 0) {
       alert("Введено неверное значение расстояние");
+      editorStore.tmpConstraint?._image?.destroy();
       editorStore.tmpConstraint = null;
       return;
     }
     editorStore.tmpConstraint.lines = [
       [line.startPoint.relatedPoint, line.endPoint.relatedPoint],
     ];
-    editorStore.tmpConstraint.value = answer;
+    editorStore.tmpConstraint.value = pxLength;
+    const cX = (line.startPoint.relatedPoint.x + line.endPoint.relatedPoint.x) / 2 - 15;
+    const cY = (line.startPoint.relatedPoint.y + line.endPoint.relatedPoint.y) / 2 - 15;
+    editorStore.tmpConstraint._text = text(cX, cY, String(mmLength));
+    editorStore.currentStageLayer.add(editorStore.tmpConstraint._text);
     editorStore.currentDataLayer.addConstraint(editorStore.tmpConstraint);
     if (line.relatedConstraints[editorStore.tmpConstraint.type]) {
       line.relatedConstraints[editorStore.tmpConstraint.type].push(
-        editorStore.tmpConstraint
+        editorStore.tmpConstraint,
       );
     } else {
       line.relatedConstraints[editorStore.tmpConstraint.type] = [
@@ -330,14 +419,19 @@ function poinAndLineDist(editorStore, line) {
 }
 
 // Перпендикулярность отрезка к радиусу дуги
-function arcRadiusLinePerp(editorStore, line) {
+async function arcRadiusLinePerp(editorStore, line) {
   if (line.relatedArc == null) {
-    if (!editorStore.tmpConstraint) {
+    if (editorStore?.tmpConstraint?.type !== ConstraintsTypes["ARC_LINE_PERPENDICULAR"]) {
+      const cX = (line.startPoint.relatedPoint.x + line.endPoint.relatedPoint.x) / 2 - 15;
+      const cY = (line.startPoint.relatedPoint.y + line.endPoint.relatedPoint.y) / 2 - 15;
       const constraint = new Constraint({
         type: ConstraintsTypes.ARC_LINE_PERPENDICULAR,
         lines: [[line.startPoint.relatedPoint, line.endPoint.relatedPoint]],
+        image: await constraintImage(cX, cY, ConstraintsTypes["ARC_LINE_PERPENDICULAR"]),
       });
+      editorStore.tmpConstraint?._image?.destroy();
       editorStore.tmpConstraint = constraint;
+      editorStore.currentStageLayer.add(constraint._image);
       if (line.relatedConstraints[constraint.type]) {
         line.relatedConstraints[constraint.type].push(constraint);
       } else {
@@ -345,6 +439,7 @@ function arcRadiusLinePerp(editorStore, line) {
       }
     } else {
       if (editorStore.tmpConstraint.lines) {
+        editorStore.tmpConstraint?._image?.destroy();
         editorStore.tmpConstraint = null;
         return;
       }
@@ -375,13 +470,18 @@ function arcRadiusLinePerp(editorStore, line) {
     } else {
       return;
     }
-    if (!editorStore.tmpConstraint) {
+    if (editorStore?.tmpConstraint?.type !== ConstraintsTypes["ARC_LINE_PERPENDICULAR"]) {
+      const cX = (line.startPoint.relatedPoint.x + line.endPoint.relatedPoint.x) / 2 - 15;
+      const cY = (line.startPoint.relatedPoint.y + line.endPoint.relatedPoint.y) / 2 - 15;
       const constraint = new Constraint({
         type: ConstraintsTypes.ARC_LINE_PERPENDICULAR,
         elements: [relatedArc],
         mode,
+        image: await constraintImage(cX, cY, ConstraintsTypes["ARC_LINE_PERPENDICULAR"]),
       });
+      editorStore.tmpConstraint?._image?.destroy();
       editorStore.tmpConstraint = constraint;
+      editorStore.currentStageLayer.add(constraint._image);
       if (relatedDrawingArc.relatedConstraints[constraint.type]) {
         relatedDrawingArc.relatedConstraints[constraint.type].push(constraint);
       } else {
@@ -389,6 +489,7 @@ function arcRadiusLinePerp(editorStore, line) {
       }
     } else {
       if (editorStore.tmpConstraint.elements) {
+        editorStore.tmpConstraint?._image?.destroy();
         editorStore.tmpConstraint = null;
         return;
       }
@@ -413,17 +514,22 @@ function arcRadiusLinePerp(editorStore, line) {
 }
 
 // Длина полилинии (отрезки/дуги)
-function polylineLength(editorStore, line) {
-  if (!editorStore.tmpConstraint) {
+async function polylineLength(editorStore, line) {
+  if (editorStore?.tmpConstraint?.type !== ConstraintsTypes["LENGTH_TOTAL"]) {
     const newLine = new Line(
       line.startPoint.relatedPoint,
       line.endPoint.relatedPoint
     );
+    const cX = (line.startPoint.relatedPoint.x + line.endPoint.relatedPoint.x) / 2 - 15;
+    const cY = (line.startPoint.relatedPoint.y + line.endPoint.relatedPoint.y) / 2 - 15;
     const constraint = new Constraint({
       type: ConstraintsTypes.LENGTH_TOTAL,
       elements: [newLine],
+      image: await constraintImage(cX, cY, ConstraintsTypes["LENGTH_TOTAL"]),
     });
+    editorStore.tmpConstraint?._image?.destroy();
     editorStore.tmpConstraint = constraint;
+    editorStore.currentStageLayer.add(constraint._image);
     line.relatedLine = newLine;
     if (line.relatedConstraints[constraint.type]) {
       line.relatedConstraints[constraint.type].push(constraint);
@@ -479,7 +585,8 @@ function lineConstraints(editorStore, line) {
 }
 
 function collapse(editorStore, line) {
-  if (!editorStore.tmpConstraint) {
+  if (editorStore?.tmpConstraint?.type !== ConstraintsTypes["COINCIDENT"]) {
+    editorStore.tmpConstraint?._image?.destroy();
     editorStore.tmpConstraint = line;
     return;
   }
@@ -497,6 +604,7 @@ function collapse(editorStore, line) {
       !lEp.relatedConstraints[ConstraintsTypes.COINCIDENT])
   ) {
     console.log("lines not coincident");
+    editorStore.tmpConstraint?._image?.destroy();
     editorStore.tmpConstraint = null;
     return;
   }
@@ -550,6 +658,7 @@ function collapse(editorStore, line) {
 
   if (!selectedArc) {
     console.log("arc not selected");
+    editorStore.tmpConstraint?._image?.destroy();
     editorStore.tmpConstraint = null;
     return;
   }
@@ -694,7 +803,7 @@ function collapse(editorStore, line) {
   // });
 
   let { status } = editorStore.currentDataLayer.resolve();
-  if (status == "OK") {
+  if (status === "OK" || status === null) {
     editorStore.updateDrawing();
   }
 }
@@ -753,7 +862,7 @@ export default {
   pointOnLine,
   arcAndLine,
   equalLines,
-  poinAndLineDist,
+  poinAndLineDist: pointAndLineDist,
   arcRadiusLinePerp,
   polylineLength,
   lineInfo,

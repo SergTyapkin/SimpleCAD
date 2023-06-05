@@ -59,7 +59,7 @@ export default function setArcEvents(editorStore, arc, events = null) {
         try {
           let { status } = editorStore.currentDataLayer.resolve();
           console.log(`resolve status ${status}`);
-          if (status == "OK") {
+          if (status === "OK" || status === null) {
             editorStore.updateDrawing()
           }
         } catch (e) {
